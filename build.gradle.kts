@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.hibiscusmc"
-version = "2.9.0"
+version = "2.9.1"
 
 allprojects {
     apply(plugin = "java")
@@ -49,12 +49,6 @@ allprojects {
             }
         }
 
-        // ParticleHelper
-        maven("https://repo.bytecode.space/repository/maven-public/")
-
-        // PlayerAnimator
-        maven("https://mvn.lumine.io/repository/maven/")
-
         // md-5 Repo
         maven("https://repo.md-5.net/content/groups/public/")
 
@@ -69,12 +63,14 @@ allprojects {
 
         // Hibiscus Commons
         maven("https://repo.hibiscusmc.com/releases")
+
+        // Nexo
+        maven("https://repo.nexomc.com/releases")
     }
 
     dependencies {
         compileOnly(fileTree("${project.rootDir}/lib") { include("*.jar") })
         compileOnly("com.mojang:authlib:1.5.25")
-        //compileOnly("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
         compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
         compileOnly("org.jetbrains:annotations:24.1.0")
         compileOnly("me.clip:placeholderapi:2.11.6")
@@ -92,23 +88,16 @@ allprojects {
         compileOnly("io.github.toxicity188:BetterCommand:1.3") //BetterCommand library
         //compileOnly("it.unimi.dsi:fastutil:8.5.14")
         compileOnly("org.projectlombok:lombok:1.18.34")
-        compileOnly("me.lojosho:HibiscusCommons:0.8.3-a89bcec3")
-
-        // Handled by Spigot Library Loader ~ Deprecated as of Dec 16, 2025
-        /*
-        compileOnly("net.kyori:adventure-api:4.24.0")
-        compileOnly("net.kyori:adventure-text-minimessage:4.24.0")
-        compileOnly("net.kyori:adventure-platform-bukkit:4.4.1")
-         */
+        compileOnly("me.lojosho:HibiscusCommons:0.9.2")
 
         annotationProcessor("org.projectlombok:lombok:1.18.36")
         testCompileOnly("org.projectlombok:lombok:1.18.36")
         testAnnotationProcessor("org.projectlombok:lombok:1.18.36")
+        compileOnly("com.nexomc:nexo:1.24.0")
 
         implementation("dev.triumphteam:triumph-gui:3.2.0-SNAPSHOT") {
             exclude("net.kyori") // Already have adventure API
         }
-        implementation("com.owen1212055:particlehelper:1.0.0-SNAPSHOT")
     }
 
     tasks {
@@ -116,6 +105,8 @@ allprojects {
             // javadoc spec has these added.
             (options as StandardJavadocDocletOptions)
                 .tags("apiNote:a:API:", "implSpec:a:Implementation Requirements", "implNote:a:Implementation Note:")
+            // The codebase isn't fully javadoc'd; silence doclint's "no comment" (and other) noise.
+            (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
         }
     }
 }
@@ -157,7 +148,6 @@ tasks {
 
         relocate("dev.triumphteam.gui", "com.hibiscusmc.hmccosmetics.shaded.gui")
         relocate("com.owen1212055.particlehelper", "com.hibiscusmc.hmccosmetics.shaded.particlehelper")
-        relocate("com.ticxo.playeranimator", "com.hibiscusmc.hmccosmetics.shaded.playeranimator")
         archiveFileName.set("HMCCosmeticsRemapped-${project.version}.jar")
 
         dependencies {
@@ -187,14 +177,11 @@ bukkit {
     depend = listOf("HibiscusCommons")
     softDepend = listOf("Nexo", "BetterHud", "ModelEngine", "Oraxen", "ItemsAdder", "Geary", "HMCColor", "WorldGuard", "MythicMobs", "PlaceholderAPI", "SuperVanish", "PremiumVanish", "LibsDisguises", "Denizen", "MMOItems", "Eco")
     version = "${project.version}"
-    loadBefore = listOf(
-        "Cosmin" // Fixes an issue with Cosmin loading before and taking /cosmetic, when messing with what we do.
-    )
 
     commands {
-        register("cosmetic") {
+        register("hmccosmetics") {
             description = "Base Cosmetic Command"
-            aliases = listOf("hmccosmetics", "cosmetics")
+            aliases = listOf("cosmetic", "cosmetics")
         }
     }
     permissions {
@@ -252,10 +239,16 @@ bukkit {
         register("hmccosmetics.cmd.show") {
             default = BukkitPluginDescription.Permission.Default.OP
         }
+        register("hmccosmetics.cmd.toggle") {
+            default = BukkitPluginDescription.Permission.Default.OP
+        }
         register("hmccosmetics.cmd.hide.other") {
             default = BukkitPluginDescription.Permission.Default.OP
         }
         register("hmccosmetics.cmd.show.other") {
+            default = BukkitPluginDescription.Permission.Default.OP
+        }
+        register("hmccosmetics.cmd.toggle.other") {
             default = BukkitPluginDescription.Permission.Default.OP
         }
         register("hmccosmetics.cmd.wardrobe.other") {

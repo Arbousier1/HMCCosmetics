@@ -98,6 +98,8 @@ cosmetic-settings:
   # If the plugin should set the pitch of balloons to always be 0, to prevent players looking up affecting the balloon.
   # This only applies to models that have a "head" section to them. THIS DOES NOT IMPACT THE REST OF THE ENTITY.
   balloon-head-unmoving: false
+  # Should, by default, the lead be spawned for the balloon
+  balloon-lead-default: true
   # how the balloon should be positioned relative to the player
   balloon-offset:
     x: 0.5
@@ -114,7 +116,8 @@ menu-settings:
     # Below is the shading mechanism behind cosmetic items. This is a bit complicated, but it allows for a lot of customization.
     # The shading is done through the title and by shifting textures around. This is done by offsets.
     # Only Nexo is support by default. Vanilla can't properly handle it without a lot of unicodes and ItemsAdder adds weird offsets and decolors it. (This is why it is disabled by default)
-    enabled: false # Default of menus having shading. This can be toggled individually in menus with "shading: true/false"
+    # Enable by using MODERN or TEXT
+    type: NONE
     first-row-shift: "<shift:-153>" # Nexo: "<shift:-153>"
     sequent-row-shift: " <shift:-153>" # Nexo: " <shift:-153>" (Space is important here!)
     individual-column-shift: "<shift:-3>" # Nexo: "<shift:-3>"
@@ -154,6 +157,9 @@ hook-settings:
   hmccolor:
     # If HMCColor is available, prefer hmccolor dye menu rather than the internal menu. Requires a restart.
     prefer-hmccolor-menu: false
+  vulcan:
+    # Will ignore any violations in Vulcan if a player is within a wardrobe
+    exempt-checks-in-wardrobe: false
 wardrobe:
   # how much yaw should change per tick, set to 0 for none
   rotation-speed: 3

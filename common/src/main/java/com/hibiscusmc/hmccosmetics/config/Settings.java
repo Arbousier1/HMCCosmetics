@@ -2,6 +2,7 @@ package com.hibiscusmc.hmccosmetics.config;
 
 import com.hibiscusmc.hmccosmetics.HMCCosmeticsPlugin;
 import com.hibiscusmc.hmccosmetics.config.section.SlotOptionConfig;
+import com.hibiscusmc.hmccosmetics.gui.type.ShadingType;
 import com.hibiscusmc.hmccosmetics.util.MessagesUtil;
 import com.hibiscusmc.hmccosmetics.util.search.PlayerSearchManager;
 import lombok.Getter;
@@ -49,6 +50,7 @@ public class Settings {
     private static final String COSMETIC_BACKPACK_INTERCEPT_PASSENGER_PACKET_PATH = "backpack-intercept-passenger-packets";
     private static final String COSMETIC_DESTROY_LOOSE_COSMETIC_PATH = "destroy-loose-cosmetics";
     private static final String COSMETIC_BALLOON_HEAD_FORWARD_PATH = "balloon-head-forward";
+    private static final String COSMETIC_BALLOON_DEFAULT_SHOW_LEAD_PATH = "balloon-lead-default";
     private static final String COSMETIC_OFFHAND_PREVENT_SWAPPING = "offhand-prevent-swapping";
     private static final String MENU_SETTINGS_PATH = "menu-settings";
     private static final String MENU_CLICK_COOLDOWN_PATH = "click-cooldown";
@@ -58,6 +60,7 @@ public class Settings {
     private static final String UNEQUIP_CLICK_TYPE = "unequip-click";
     private static final String DYE_CLICK_TYPE = "dye-click";
     private static final String SHADING_PATH = "shading";
+    private static final String TYPE = "type";
     private static final String FIRST_ROW_SHIFT_PATH = "first-row-shift";
     private static final String SEQUENT_ROW_SHIFT_PATH = "sequent-row-shift";
     private static final String INDIVIDUAL_COLUMN_SHIFT_PATH = "individual-column-shift";
@@ -74,6 +77,8 @@ public class Settings {
     private static final String HOOK_HMCCOLOR_PATH = "hmccolor";
     private static final String HMCCOLOR_PREFER_DYE_MENU = "prefer-hmccolor-menu";
     private static final String PLAYER_SEARCH_IMPLEMENTATION = "player-search-implmentation";
+    private static final String VULCAN_HOOK_PATH = "vulcan";
+    private static final String VULCAN_IGNORE_CHECKS_IN_WARDROBE_PATH = "exempt-checks-in-wardrobe";
 
     @Getter
     private static String defaultMenu;
@@ -117,6 +122,8 @@ public class Settings {
     @Getter
     private static boolean balloonHeadForward;
     @Getter
+    private static boolean balloonDefaultShowLead;
+    @Getter
     private static boolean backpackPreventDarkness;
     @Getter
     private static boolean preferHMCColorDyeMenu;
@@ -143,6 +150,14 @@ public class Settings {
     @Getter
     private static boolean defaultShading;
     @Getter
+    private static ShadingType shadingType;
+    @Getter
+    private static String equippableCosmeticReference;
+    @Getter
+    private static String equippedCosmeticReference;
+    @Getter
+    private static String lockedCosmeticReference;
+    @Getter
     private static String firstRowShift;
     @Getter
     private static String sequentRowShift;
@@ -163,10 +178,11 @@ public class Settings {
     @Getter
     private static boolean wardrobeHideHud;
     @Getter
+    private static boolean vulcanIgnoreViolationInWardrobe;
+    @Getter
     private static boolean dyeMenuEnabled;
     @Getter
     private static PlayerSearchManager.SearchEngine engine;
-
 
     public static void load(ConfigurationNode source) {
 
@@ -224,6 +240,7 @@ public class Settings {
         engine = PlayerSearchManager.SearchEngine.valueOf(cosmeticSettings.node(PLAYER_SEARCH_IMPLEMENTATION).getString("BUKKIT").toUpperCase());
         viewDistance = cosmeticSettings.node(VIEW_DISTANCE_PATH).getInt(-3);
         balloonHeadForward = cosmeticSettings.node(COSMETIC_BALLOON_HEAD_FORWARD_PATH).getBoolean(false);
+        balloonDefaultShowLead = cosmeticSettings.node(COSMETIC_BALLOON_DEFAULT_SHOW_LEAD_PATH).getBoolean(true);
         backpackPreventDarkness = cosmeticSettings.node(BACKPACK_PREVENT_DARKNESS_PATH).getBoolean(true);
 
         ConfigurationNode menuSettings = source.node(MENU_SETTINGS_PATH);
@@ -233,7 +250,12 @@ public class Settings {
         defaultMenuCooldown = clickCooldownSettings.node(MENU_CLICK_COOLDOWN_TIME_PATH).getLong(1000L);
 
         ConfigurationNode shadingSettings = menuSettings.node(SHADING_PATH);
-        defaultShading = shadingSettings.node(ENABLED_PATH).getBoolean();
+        // Honour the legacy "enabled" boolean as a fallback for configs that predate the "type" key:
+        // enabled: true -> TEXT (the old shading behaviour), enabled/absent: false -> NONE.
+        // MODERN is opt-in only and must be selected explicitly via "type", so upgrading servers
+        // never get switched onto it silently.
+        ShadingType defaultShadingType = shadingSettings.node(ENABLED_PATH).getBoolean(false) ? ShadingType.TEXT : ShadingType.NONE;
+        shadingType = ShadingType.fromString(shadingSettings.node(TYPE).getString(""), defaultShadingType);
         firstRowShift = shadingSettings.node(FIRST_ROW_SHIFT_PATH).getString();
         sequentRowShift = shadingSettings.node(SEQUENT_ROW_SHIFT_PATH).getString();
         individualColumnShift = shadingSettings.node(INDIVIDUAL_COLUMN_SHIFT_PATH).getString();
@@ -272,13 +294,11 @@ public class Settings {
         ConfigurationNode hmccolorSettings = hookSettings.node(HOOK_HMCCOLOR_PATH);
         preferHMCColorDyeMenu = hmccolorSettings.node(HMCCOLOR_PREFER_DYE_MENU).getBoolean(false);
 
+        ConfigurationNode vulcanSettings = hookSettings.node(VULCAN_HOOK_PATH);
+        vulcanIgnoreViolationInWardrobe = vulcanSettings.node(VULCAN_IGNORE_CHECKS_IN_WARDROBE_PATH).getBoolean(false);
+
         ConfigurationNode worldGuardSettings = hookSettings.node(HOOK_WORLDGUARD_PATH);
         worldGuardMoveCheck = worldGuardSettings.node(HOOK_WG_MOVE_CHECK_PATH).getBoolean(true);
-        // I messed up in release 2.2.6 and forgot to change player_move_check to player-move-check.
-        if (!worldGuardSettings.node(HOOK_WG_MOVE_CHECK_PATH_LEGACY).virtual()) {
-            MessagesUtil.sendDebugMessages("There is a deprecated way of using WG hook setting. Change player_move_check to player-move-check in your configuration to prevent issues in the future. ", Level.WARNING);
-            worldGuardMoveCheck = worldGuardSettings.node(HOOK_WG_MOVE_CHECK_PATH_LEGACY).getBoolean(true);
-        }
     }
 
     public static Vector loadVector(final ConfigurationNode config) {

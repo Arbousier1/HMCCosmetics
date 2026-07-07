@@ -10,6 +10,7 @@ import me.lojosho.hibiscuscommons.nms.NMSHandlers;
 import me.lojosho.hibiscuscommons.nms.NMSPacketBuilder;
 import me.lojosho.hibiscuscommons.packets.wrapper.PacketWrapper;
 import me.lojosho.hibiscuscommons.util.ServerUtils;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -33,15 +34,16 @@ public class UserBackpackManager {
     private ArrayList<Integer> particleCloud = new ArrayList<>();
     @Getter
     private final CosmeticUser user;
-    @Getter @Nullable
-    private UserEntity entityManager;
+    @Getter
+    private final UserEntity entityManager;
 
     public UserBackpackManager(CosmeticUser user) {
+        Location location = user.getEntity().getLocation();
         this.user = user;
         this.backpackHidden = false;
-        this.invisibleArmorStand = ServerUtils.getNextEntityId();
+        this.invisibleArmorStand = ServerUtils.getNextEntityId(location.getWorld());
         this.entityManager = new UserEntity(user.getUniqueId());
-        if (user.getEntity() != null) this.entityManager.refreshViewers(user.getEntity().getLocation()); // Fixes an issue where a player, who somehow removes their potions, but doesn't have an entity produces an NPE (it's dumb)
+        if (user.getEntity() != null) this.entityManager.refreshViewers(location); // Fixes an issue where a player, who somehow removes their potions, but doesn't have an entity produces an NPE (it's dumb)
     }
 
     public int getFirstArmorStandId() {
@@ -55,8 +57,9 @@ public class UserBackpackManager {
     }
 
     private void spawn(CosmeticBackpackType cosmeticBackpackType) {
+        Location location = user.getEntity().getLocation();
         getEntityManager().setIds(List.of(invisibleArmorStand));
-        getEntityManager().teleport(user.getEntity().getLocation());
+        getEntityManager().teleport(location);
         final List<Player> outsideViewers = getEntityManager().getViewers();
 
         NMSPacketBuilder packetBuilder = NMSHandlers.getHandler().getPacketBuilder();
@@ -64,7 +67,7 @@ public class UserBackpackManager {
         final List<PacketWrapper> outsideBundle = new ArrayList<>(16);
         final List<PacketWrapper> ownerBundle = new ArrayList<>(16);
 
-        outsideBundle.addAll(HMCCPacketManager.getInvisibleArmorStand(getFirstArmorStandId(), user.getEntity().getLocation(), UUID.randomUUID()));
+        outsideBundle.addAll(HMCCPacketManager.getInvisibleArmorStand(getFirstArmorStandId(), location, UUID.randomUUID()));
 
         double scaleValue = 1;
         if (user.getPlayer() != null) {
@@ -87,8 +90,8 @@ public class UserBackpackManager {
 
         if (cosmeticBackpackType.isFirstPersonCompadible()) {
             for (int i = particleCloud.size(); i < cosmeticBackpackType.getHeight(); i++) {
-                int entityId = ServerUtils.getNextEntityId();
-                ownerBundle.addAll(HMCCPacketManager.getCloudHandleEffect(entityId, user.getEntity().getLocation(), UUID.randomUUID()));
+                int entityId = ServerUtils.getNextEntityId(location.getWorld());
+                ownerBundle.addAll(HMCCPacketManager.getCloudHandleEffect(entityId, location, UUID.randomUUID()));
                 //if (scaleValue != 1) ownerBundle.add(packetBuilder.buildEntityAttributePacket(entityId, Attribute.SCALE, scaleValue)); // Todo: figure out how to impl scaling, area clouds can not scale and will kick the player if sent
                 this.particleCloud.add(entityId);
             }
@@ -110,6 +113,11 @@ public class UserBackpackManager {
     }
 
     public void despawnBackpack() {
+        int[] existingPassengers = user.getEntity().getPassengers().stream()
+                .mapToInt(Entity::getEntityId)
+                .toArray();
+        if (existingPassengers.length > 0) HMCCPacketManager.sendRidingPacket(user.getEntity().getEntityId(), existingPassengers, getEntityManager().getViewers());
+
         HMCCPacketManager.sendEntityDestroyPacket(invisibleArmorStand, getEntityManager().getViewers());
         if (particleCloud != null) {
             for (Integer entityId : particleCloud) {

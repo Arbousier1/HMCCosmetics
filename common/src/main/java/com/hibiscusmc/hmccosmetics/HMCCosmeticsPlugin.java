@@ -17,7 +17,9 @@ import com.hibiscusmc.hmccosmetics.gui.special.impl.HMCColorDyeMenu;
 import com.hibiscusmc.hmccosmetics.gui.special.impl.InternalDyeMenu;
 import com.hibiscusmc.hmccosmetics.hooks.items.HookHMCCosmetics;
 import com.hibiscusmc.hmccosmetics.hooks.misc.HookBetterHud;
+import com.hibiscusmc.hmccosmetics.hooks.misc.HookVulcan;
 import com.hibiscusmc.hmccosmetics.hooks.placeholders.HMCPlaceholderExpansion;
+import com.hibiscusmc.hmccosmetics.hooks.resourcepack.HookNexo;
 import com.hibiscusmc.hmccosmetics.hooks.worldguard.WGHook;
 import com.hibiscusmc.hmccosmetics.hooks.worldguard.WGListener;
 import com.hibiscusmc.hmccosmetics.listener.*;
@@ -41,6 +43,7 @@ import me.lojosho.shaded.configurate.yaml.NodeStyle;
 import me.lojosho.shaded.configurate.yaml.YamlConfigurationLoader;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permission;
@@ -60,6 +63,7 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
         super(13873, 1879);
         new HookHMCCosmetics();
         new HookBetterHud();
+        new HookVulcan();
     }
 
     @Override
@@ -110,8 +114,13 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
         this.playerSearchManager = new PlayerSearchManager(Settings.getEngine(), this);
 
         // Commands
-        getServer().getPluginCommand("cosmetic").setExecutor(new CosmeticCommand());
-        getServer().getPluginCommand("cosmetic").setTabCompleter(new CosmeticCommandTabComplete());
+        PluginCommand cosmeticCommand = getServer().getPluginCommand("hmccosmetics");
+        if (cosmeticCommand != null) {
+            cosmeticCommand.setExecutor(new CosmeticCommand());
+            cosmeticCommand.setTabCompleter(new CosmeticCommandTabComplete());
+        } else {
+            getLogger().severe("Unable to register commands! (Is another plugin interfering with HMCCosmetics commands?)");
+        }
 
         // Listener
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(), this);
@@ -122,6 +131,12 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
 
         if (HibiscusCommonsPlugin.isOnPaper()) {
             getServer().getPluginManager().registerEvents(new PaperPlayerGameListener(), this);
+        }
+        // Nexo resource-pack shading. Registered as a plain listener (not a HibiscusCommons Hook) so it
+        // doesn't collide with HibiscusCommons' own "Nexo" item hook, and only when Nexo is present so
+        // reflecting over its NexoPack event handlers doesn't hit missing classes.
+        if (Bukkit.getPluginManager().isPluginEnabled("Nexo")) {
+            getServer().getPluginManager().registerEvents(new HookNexo(), this);
         }
         // Database
         new Database();
@@ -249,18 +264,6 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
             user.updateCosmetic();
         }
          */
-        for (Cosmetic cosmetic : Cosmetics.values()) {
-            if (cosmetic.getPermission() != null) {
-                if (getInstance().getServer().getPluginManager().getPermission(cosmetic.getPermission()) != null) continue;
-                getInstance().getServer().getPluginManager().addPermission(new Permission(cosmetic.getPermission()));
-            }
-        }
-        for (Menu menu : Menus.values()) {
-            if (menu.getPermissionNode() != null) {
-                if (getInstance().getServer().getPluginManager().getPermission(menu.getPermissionNode()) != null) continue;
-                getInstance().getServer().getPluginManager().addPermission(new Permission(menu.getPermissionNode()));
-            }
-        }
 
         getInstance().getLogger().info("Successfully Enabled HMCCosmetics");
         getInstance().getLogger().info(Cosmetics.values().size() + " Cosmetics Successfully Setup");
